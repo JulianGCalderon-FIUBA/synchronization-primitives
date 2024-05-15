@@ -2,7 +2,7 @@ use std::sync::{Condvar, Mutex};
 
 struct BarrierState {
     pub waiting: u32,
-    pub left: u32,
+    pub leaving: u32,
 }
 
 pub struct Barrier {
@@ -17,7 +17,7 @@ impl Barrier {
     pub fn new(limit: u32) -> Self {
         let state = BarrierState {
             waiting: 0,
-            left: limit,
+            leaving: limit,
         };
 
         Self {
@@ -36,17 +36,20 @@ impl Barrier {
             .wait_while(state, |state| state.waiting < self.limit)
             .unwrap();
 
-        state.left -= 1;
-        if state.left == 0 {
-            state.waiting = 0;
-            state.left = self.limit;
+        state.leaving -= 1;
+
+        // if first
+        if state.leaving == self.limit - 1 {
+            self.condition.notify_all();
+            return true;
         }
 
-        if state.left == self.limit - 1 {
-            self.condition.notify_all();
-            true
-        } else {
-            false
+        // if last
+        if state.leaving == 0 {
+            state.waiting = 0;
+            state.leaving = self.limit;
         }
+
+        return false;
     }
 }
