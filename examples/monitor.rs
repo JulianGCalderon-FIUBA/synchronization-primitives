@@ -41,15 +41,17 @@ fn pre() {
 fn wait(semaphore: &Monitor<u32>) {
     let mut guard = semaphore.lock().unwrap();
 
-    while *guard == 0 {
-        guard.wait().unwrap();
-    }
+    guard.wait_while(|counter| *counter == 0).unwrap();
 
     *guard -= 1;
 }
 
 fn signal(semaphore: &Monitor<u32>) {
-    *semaphore.lock().unwrap() += 1
+    let mut guard = semaphore.lock().unwrap();
+
+    *guard += 1;
+
+    guard.notify_one();
 }
 
 fn inside(counter: &Mutex<u32>) {

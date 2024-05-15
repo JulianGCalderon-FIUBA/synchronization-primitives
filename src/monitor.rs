@@ -36,6 +36,24 @@ impl<'m, T> MonitorGuard<'m, T> {
 
         Ok(())
     }
+
+    pub fn wait_while<F>(&mut self, f: F) -> Result<(), PoisonError<MutexGuard<'m, T>>>
+    where
+        F: FnMut(&mut T) -> bool,
+    {
+        let guard = self.cond.wait_while(self.guard.take().unwrap(), f)?;
+        self.guard = Some(guard);
+
+        Ok(())
+    }
+
+    pub fn notify_one(&self) {
+        self.cond.notify_one();
+    }
+
+    pub fn notify_all(&self) {
+        self.cond.notify_all();
+    }
 }
 
 impl<'m, T> Deref for MonitorGuard<'m, T> {
