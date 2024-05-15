@@ -38,13 +38,13 @@ impl Barrier {
 
         state.leaving -= 1;
 
-        // if first
+        // if last (first to leave)
         if state.leaving == self.limit - 1 {
             self.condition.notify_all();
             return true;
         }
 
-        // if last
+        // if last to leave
         if state.leaving == 0 {
             state.waiting = 0;
             state.leaving = self.limit;
