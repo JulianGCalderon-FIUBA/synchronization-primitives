@@ -31,7 +31,9 @@ pub struct MonitorGuard<'m, T> {
 
 impl<'m, T> MonitorGuard<'m, T> {
     pub fn wait(&mut self) -> Result<(), PoisonError<MutexGuard<'m, T>>> {
-        let guard = self.cond.wait(self.guard.take().unwrap())?;
+        let guard = self
+            .cond
+            .wait(self.guard.take().expect("guard is only None while waiting"))?;
         self.guard = Some(guard);
 
         Ok(())
@@ -41,7 +43,10 @@ impl<'m, T> MonitorGuard<'m, T> {
     where
         F: FnMut(&mut T) -> bool,
     {
-        let guard = self.cond.wait_while(self.guard.take().unwrap(), f)?;
+        let guard = self.cond.wait_while(
+            self.guard.take().expect("guard is only None while waiting"),
+            f,
+        )?;
         self.guard = Some(guard);
 
         Ok(())
@@ -60,12 +65,16 @@ impl<'m, T> Deref for MonitorGuard<'m, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        self.guard.as_ref().unwrap()
+        self.guard
+            .as_ref()
+            .expect("guard is only None while waiting")
     }
 }
 
 impl<'m, T> DerefMut for MonitorGuard<'m, T> {
     fn deref_mut(&mut self) -> &mut T {
-        self.guard.as_mut().unwrap()
+        self.guard
+            .as_mut()
+            .expect("guard is only None while waiting")
     }
 }
