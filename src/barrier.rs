@@ -1,39 +1,49 @@
 use std::sync::{Condvar, Mutex};
 
+struct BarrierState {
+    pub waiting: u32,
+    pub left: u32,
+}
+
 pub struct Barrier {
     limit: u32,
-    counter: Mutex<(u32, u32)>,
-    waiting: Condvar,
+    state: Mutex<BarrierState>,
+    condition: Condvar,
 }
 
 pub type Monitor<T> = (Mutex<T>, Vec<Condvar>);
 
 impl Barrier {
     pub fn new(limit: u32) -> Self {
+        let state = BarrierState {
+            waiting: 0,
+            left: limit,
+        };
+
         Self {
             limit,
-            counter: Mutex::new((0, limit)),
-            waiting: Condvar::new(),
+            state: Mutex::new(state),
+            condition: Condvar::new(),
         }
     }
 
     pub fn wait(&self) -> bool {
-        let mut counter = self.counter.lock().unwrap();
-        counter.0 += 1;
+        let mut state = self.state.lock().unwrap();
+        state.waiting += 1;
 
-        let mut counter = self
-            .waiting
-            .wait_while(counter, |&mut counter| counter.0 < self.limit)
+        let mut state = self
+            .condition
+            .wait_while(state, |state| state.waiting < self.limit)
             .unwrap();
 
-        counter.1 -= 1;
-        if counter.1 == 0 {
-            counter.0 = 0;
-            counter.1 = self.limit;
+        state.left -= 1;
+        if state.left == 0 {
+            state.waiting = 0;
+            state.left = self.limit;
         }
 
-        if counter.1 == self.limit - 1 {
-            self.waiting.notify_all();
+        if state.left == self.limit - 1 {
+            self.condition.notify_all();
             true
         } else {
             false
