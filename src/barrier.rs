@@ -11,8 +11,6 @@ pub struct Barrier {
     condition: Condvar,
 }
 
-pub type Monitor<T> = (Mutex<T>, Vec<Condvar>);
-
 impl Barrier {
     pub fn new(limit: u32) -> Self {
         let state = BarrierState {
